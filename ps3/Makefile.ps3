@@ -1,0 +1,154 @@
+# Explicit PSL1GHT build for TyrQuake's NetQuake software client.
+
+.SUFFIXES:
+.DEFAULT_GOAL := all
+
+ifeq ($(strip $(PSL1GHT)),)
+$(error "Please set PSL1GHT in your environment")
+endif
+
+ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
+TARGET := tyr-quake
+BUILD := $(ROOT)/build/ps3
+OUTPUT := $(ROOT)/$(TARGET)
+
+include $(PSL1GHT)/ppu_rules
+
+CFILES := \
+	alias_model.c \
+	buildinfo.c \
+	cd_common.c \
+	cd_null.c \
+	chase.c \
+	cl_demo.c \
+	cl_input.c \
+	cl_main.c \
+	cl_parse.c \
+	cl_tent.c \
+	cmd.c \
+	common.c \
+	console.c \
+	crc.c \
+	cvar.c \
+	d_edge.c \
+	d_fill.c \
+	d_init.c \
+	d_modech.c \
+	d_part.c \
+	d_polyse.c \
+	d_scan.c \
+	d_sky.c \
+	d_sprite.c \
+	d_surf.c \
+	d_vars.c \
+	developer.c \
+	draw.c \
+	host.c \
+	host_cmd.c \
+	in_ps3.c \
+	keys.c \
+	mathlib.c \
+	menu.c \
+	model.c \
+	net_common.c \
+	net_dgrm.c \
+	net_loop.c \
+	net_main.c \
+	net_none.c \
+	pcx.c \
+	pr_cmds.c \
+	pr_edict.c \
+	pr_exec.c \
+	r_aclip.c \
+	r_alias.c \
+	r_bsp.c \
+	r_draw.c \
+	r_edge.c \
+	r_efrag.c \
+	r_lerp.c \
+	r_light.c \
+	r_main.c \
+	r_misc.c \
+	r_model.c \
+	r_part.c \
+	r_sky.c \
+	r_sprite.c \
+	r_surf.c \
+	r_vars.c \
+	rb_tree.c \
+	sbar.c \
+	screen.c \
+	shell.c \
+	snd_dma.c \
+	snd_mem.c \
+	snd_mix.c \
+	snd_music.c \
+	snd_ps3.c \
+	sprite_model.c \
+	sv_main.c \
+	sv_move.c \
+	sv_phys.c \
+	sv_user.c \
+	sys_ps3.c \
+	tga.c \
+	vid_mode.c \
+	vid_ps3.c \
+	view.c \
+	wad.c \
+	world.c \
+	zone.c
+
+ifneq ($(words $(CFILES)),$(words $(sort $(CFILES))))
+$(error Duplicate source basenames are incompatible with flattened VPATH)
+endif
+
+export VPATH := $(ROOT)/common $(ROOT)/NQ $(ROOT)/ps3
+export OFILES := $(CFILES:.c=.o)
+export DEPSDIR := $(BUILD)
+export BUILDDIR := $(BUILD)
+export OUTPUT
+
+export CFLAGS := -Wall -O2 -std=gnu99 -mcpu=cell $(MACHDEP) \
+	-DNQ_HACK -DNDEBUG \
+	-DTYR_VERSION=0.71-30-g6531579 \
+	-DTYR_VERSION_TIME=1763275207LL \
+	-DQBASEDIR=. \
+	-iquote $(ROOT)/include \
+	-iquote $(ROOT)/NQ \
+	-iquote $(ROOT)/external \
+	$(LIBPSL1GHT_INC)
+export LDFLAGS := $(MACHDEP) -Wl,-Map,$(OUTPUT).map
+export LIBPATHS := $(LIBPSL1GHT_LIB)
+export LIBS := -lnet -lm
+export LD := $(CC)
+
+.PHONY: all clean $(BUILD)
+
+ifneq ($(CURDIR),$(BUILD))
+
+all: $(BUILD)
+
+$(BUILD):
+	@mkdir -p $(BUILD)
+	@$(MAKE) --no-print-directory -C $(BUILD) \
+		-f $(ROOT)/ps3/Makefile.ps3 $(OUTPUT).self
+
+clean:
+	@rm -rf $(BUILD) $(OUTPUT).elf $(OUTPUT).self \
+		$(OUTPUT).fake.self $(OUTPUT).map
+
+else
+
+DEPENDS := $(OFILES:.o=.d)
+
+# PSL1GHT's socket headers include stdbool.h before TyrQuake's qtypes.h.
+# Force qtypes first for the two socket-facing sources so its true/false
+# definitions survive qtypes.h's portability cleanup.
+net_dgrm.o net_main.o: CFLAGS += -include $(ROOT)/include/qtypes.h
+
+$(OUTPUT).self: $(OUTPUT).elf
+$(OUTPUT).elf: $(OFILES)
+
+-include $(DEPENDS)
+
+endif
