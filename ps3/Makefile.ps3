@@ -6,13 +6,22 @@
 ifeq ($(strip $(PSL1GHT)),)
 $(error "Please set PSL1GHT in your environment")
 endif
+ifeq ($(strip $(PS3DEV)),)
+$(error "Please set PS3DEV in your environment")
+endif
 
 ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
 TARGET := tyr-quake
 BUILD := $(ROOT)/build/ps3
 OUTPUT := $(ROOT)/$(TARGET)
+PAK_SHA256 := 35a9c55e5e5a284a159ad2a62e0e8def23d829561fe2f54eb402dbc0a9a946af
 
 include $(PSL1GHT)/ppu_rules
+
+export TITLE := Quake Shareware
+export APPID := QUAKE0001
+export CONTENTID := UP0001-$(APPID)_00-0000000000000000
+export ICON0 := $(ROOT)/ps3/ICON0.PNG
 
 CFILES := \
 	alias_model.c \
@@ -122,11 +131,27 @@ export LIBPATHS := $(LIBPSL1GHT_LIB)
 export LIBS := -lrsx -lgcm_sys -lsysutil -lio -laudio -lnet -lrt -llv2 -lm
 export LD := $(CC)
 
-.PHONY: all clean $(BUILD)
+.PHONY: all clean pkg $(BUILD)
 
 ifneq ($(CURDIR),$(BUILD))
 
 all: $(BUILD)
+
+pkg: all
+	@test -f $(ROOT)/id1/pak0.pak || \
+		{ echo "Missing $(ROOT)/id1/pak0.pak; install the verified shareware PAK first"; exit 1; }
+	@actual_hash=$$(if command -v shasum >/dev/null 2>&1; then \
+		shasum -a 256 $(ROOT)/id1/pak0.pak; else \
+		sha256sum $(ROOT)/id1/pak0.pak; fi | awk '{print $$1}'); \
+		test "$$actual_hash" = "$(PAK_SHA256)" || \
+		{ echo "pak0.pak SHA-256 mismatch: $$actual_hash"; exit 1; }
+	@rm -rf $(BUILD)/pkg $(BUILD)/pkgfiles
+	@rm -f $(OUTPUT).pkg $(OUTPUT).gnpdrm.pkg
+	@mkdir -p $(BUILD)/pkgfiles/USRDIR/id1
+	@cp $(ROOT)/id1/pak0.pak $(BUILD)/pkgfiles/USRDIR/id1/pak0.pak
+	@$(MAKE) --no-print-directory -C $(BUILD) \
+		-f $(ROOT)/ps3/Makefile.ps3 $(OUTPUT).pkg \
+		PKGFILES=$(BUILD)/pkgfiles
 
 $(BUILD):
 	@mkdir -p $(BUILD)
@@ -135,7 +160,8 @@ $(BUILD):
 
 clean:
 	@rm -rf $(BUILD) $(OUTPUT).elf $(OUTPUT).self \
-		$(OUTPUT).fake.self $(OUTPUT).map
+		$(OUTPUT).fake.self $(OUTPUT).map $(OUTPUT).pkg \
+		$(OUTPUT).gnpdrm.pkg
 
 else
 
