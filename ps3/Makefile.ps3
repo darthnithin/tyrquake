@@ -119,7 +119,7 @@ export CFLAGS := -Wall -O2 -std=gnu99 -mcpu=cell $(MACHDEP) \
 	$(LIBPSL1GHT_INC)
 export LDFLAGS := $(MACHDEP) -Wl,-Map,$(OUTPUT).map
 export LIBPATHS := $(LIBPSL1GHT_LIB)
-export LIBS := -lnet -lm
+export LIBS := -lrsx -lgcm_sys -lsysutil -lnet -lm
 export LD := $(CC)
 
 .PHONY: all clean $(BUILD)
