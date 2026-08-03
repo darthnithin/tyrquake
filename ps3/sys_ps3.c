@@ -29,6 +29,8 @@
 #define PS3_DEVELOPMENT_BASEDIR "/app_home"
 #define PS3_DEFAULT_HEAP_SIZE ((size_t)64 << 20)
 
+void IN_PS3_Poll(void);
+
 SYS_PROCESS_PARAM(1001, 0x100000);
 
 qboolean isDedicated = false;
@@ -237,6 +239,8 @@ Sys_MakeCodeUnwriteable(void *start_addr, void *end_addr)
 void
 Sys_SendKeyEvents(void)
 {
+    /* Modal console/loading loops call this even when Host_Frame is paused. */
+    IN_PS3_Poll();
 }
 
 int
